@@ -11,7 +11,7 @@
 
 #define NUM_WORKERS (8)
 // #define NUM_WARPGROUPS (NUM_WORKERS/(kittens::WARPGROUP_WARPS))
-#define NUM_WORKERS_KV (4)
+#define NUM_WORKERS_KV (8)
 
 using namespace kittens;
 
@@ -62,20 +62,20 @@ __device__ static inline void wg_make_causal(RT &dst, const RT &src, const typen
 
 // warp 间一定是 warp*1 排布
 template<ducks::rt::row_layout RT>
-__device__ static inline void warp_make_causal(RT &dst, const RT &src, const typename base_types::packing<typename RT::dtype>::unpacked_type &val=0) {
+__device__ static inline void warp_make_causal(RT &dst, const RT &src, int subtile_j, const typename base_types::packing<typename RT::dtype>::unpacked_type &val=0) {
     const typename RT::dtype packed_val = base_types::packing<typename RT::dtype>::pack(val);
     #pragma unroll
     for(int i = 0; i < dst.height; i++) {
         #pragma unroll
         for(int j = 0; j < dst.width; j++) {
 
-            if(j < ((warpid() ) * dst.height) + i) { // below the diagonal, copy
+            if(j+subtile_j < ((warpid() ) * dst.height) + i) { // below the diagonal, copy
                 #pragma unroll
                 for(int k = 0; k < dst.packed_per_tile; k++) {
                     dst.tiles[i][j].data[k] = src.tiles[i][j].data[k];
                 }
             }
-            else if(j > ((warpid() ) * dst.height) + i) { // above the diagonal, zero
+            else if(j+subtile_j > ((warpid() ) * dst.height) + i) { // above the diagonal, zero
                 #pragma unroll
                 for(int k = 0; k < dst.packed_per_tile; k++) {
                     dst.tiles[i][j].data[k] = packed_val;
@@ -122,9 +122,10 @@ void fwd_attend_ker_dim(int N, const bf16* __restrict__ __q__, const bf16* __res
     extern __shared__ int __shm[]; // this is the CUDA shared memory
     shared_allocator al((int*)&__shm[0]);
 
-    auto block_start = blockIdx.x * (N * D);
-    const bf16 *_q = __q__ + block_start, *_k = __k__ + block_start, *_v = __v__ + block_start;
-          bf16 *_o = __o__ + block_start;
+    auto block_start_q = blockIdx.y * (N * D) + blockIdx.x * (NUM_WORKERS * kittens::TILE_DIM * D);
+    auto block_start_kv = blockIdx.y * (N * D);
+    const bf16 *_q = __q__ + block_start_q, *_k = __k__ + block_start_kv, *_v = __v__ + block_start_kv;
+          bf16 *_o = __o__ + block_start_q;
 
     // st_bf<qo_height, D/kittens::TILE_DIM, layout_q>          (&q_smem)   [NUM_WARPGROUPS] = al.allocate<st_bf<qo_height, D/kittens::TILE_DIM, layout_q>,          NUM_WARPGROUPS>();
     st_bf<1, D/kittens::TILE_DIM, layout_k>          (&k_smem)[2][NUM_WORKERS_KV] = al.allocate<st_bf<1, D/kittens::TILE_DIM, layout_k>, 2,       NUM_WORKERS_KV>();
@@ -190,8 +191,8 @@ void fwd_attend_ker_dim(int N, const bf16* __restrict__ __q__, const bf16* __res
     for (auto kv_idx = 0; kv_idx <= qo_index/NUM_WORKERS; kv_idx++, tic ^= 1, toc ^= 1) {
         // tma::arrive_and_wait(kvsmem_barrier, kv_phasebit);
         // load from global, global no swizzle; thread mapping default
-        load(k_smem[tic][warpid], _k + (kv_idx*NUM_WORKERS+warpid)*k_reg.num_elements, k_reg.cols);
-        load(v_smem[tic][warpid], _v + (kv_idx*NUM_WORKERS+warpid)*v_reg.num_elements, v_reg.cols);
+        load(k_smem[tic][warpid], _k + (kv_idx*NUM_WORKERS_KV+warpid)*k_reg.num_elements, k_reg.cols);
+        load(v_smem[tic][warpid], _v + (kv_idx*NUM_WORKERS_KV+warpid)*v_reg.num_elements, v_reg.cols);
         // kv_phasebit ^= 1;
 
         __syncthreads();
@@ -219,7 +220,7 @@ void fwd_attend_ker_dim(int N, const bf16* __restrict__ __q__, const bf16* __res
             copy(max_vec_last,  max_vec);
 
             if (kv_idx == qo_index/NUM_WORKERS) {
-                warp_make_causal(att_block, att_block, -INFINITY); 
+                warp_make_causal(att_block, att_block, subtile, -INFINITY); 
             }
 
             row_max(max_vec, att_block, max_vec); // accumulate onto the max_vec

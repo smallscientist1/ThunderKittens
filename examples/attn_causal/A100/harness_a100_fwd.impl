@@ -157,9 +157,11 @@ int main(int argc, char **argv) {
     // printouts to make sure)
 
     float total_diff = 0;
+    // printf("Total elements: %d\n", TOTAL_ELEMENTS);
     for(int i = 0; i < TOTAL_ELEMENTS; i++) {
         float diff = o[i] - o_ref[i % TOTAL_UNIQUE_ELEMENTS];
         if (i < TOTAL_UNIQUE_ELEMENTS) {
+            // printf("o[%d]: %f, o_ref[%d]: %f, diff: %f\n", i, o[i], i % TOTAL_UNIQUE_ELEMENTS, o_ref[i % TOTAL_UNIQUE_ELEMENTS], diff);
             o_ref_file << o_ref[i % TOTAL_UNIQUE_ELEMENTS] << ' ';
             o_file << o[i] << ' ';
             diff_file << diff << ' ';
