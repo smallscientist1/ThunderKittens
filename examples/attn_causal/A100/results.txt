@@ -1,0 +1,17 @@
+./attn_causal ../randn_4096_64.txt 
+Entered main!
+Starting to enter!
+Finished loading Q
+Finished loading K
+Finished loading V
+Finished loading O_REF
+Finished loading file from ../randn_4096_64.txt!
+Allocated and set memory on GPU!
+Set max dynamic memory!
+Starting warmup
+Starting kernel
+Finished kernel
+Average difference: 0
+Average execution time: 2633 us
+Correct :)
+Efficiency: 104.397 TFLOPS
