@@ -1,17 +1,17 @@
-./attn_causal ../randn_4096_64.txt 
+(flashattention) (base) REDMOND.v-feiychen@GCRAZGDL1740:~/ThunderKittens/examples/attn_causal/A100$ ./attn_causal ../randn_causal_4096N_64D.txt 
 Entered main!
 Starting to enter!
 Finished loading Q
 Finished loading K
 Finished loading V
 Finished loading O_REF
-Finished loading file from ../randn_4096_64.txt!
+Finished loading file from ../randn_causal_4096N_64D.txt!
 Allocated and set memory on GPU!
 Set max dynamic memory!
 Starting warmup
 Starting kernel
 Finished kernel
-Average difference: 0
-Average execution time: 2633 us
+Average difference: 8.10781e-05
+Average execution time: 5059 us
 Correct :)
-Efficiency: 104.397 TFLOPS
+Efficiency: 54.3344 TFLOPS
