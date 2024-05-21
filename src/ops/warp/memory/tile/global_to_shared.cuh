@@ -47,6 +47,41 @@ __device__ static inline void load(ST &dst, const bf16 *src, const int row_strid
     }
 }
 /**
+ * @brief Loads bf16 data from global memory into a shared memory tile with a row layout, part row of the tile.
+ *
+ * @tparam ST The type of the shared tile.
+ * @param[out] dst The destination shared memory tile.
+ * @param[in] src The source global memory array.
+ * @param row_stride[in] The stride between rows in the source array.
+ * @param row_start[in] The row to start loading from.
+ * @param rows[in] The number of rows to load.
+ */
+template<ducks::st::all ST>
+__device__ static inline void load(ST &dst, const bf16 *src, const int row_stride, int row_start, int rows) {
+    // each thread needs to do 1 call per width*height
+    // attempting to improve striping into dram
+    // each lane of the warp should store sequential into dram
+
+    int laneid = threadIdx.x % 32;
+
+    // we can handle this many rows each time we run a memcpy_async
+    int elem_per_memcpy = sizeof(float4)/sizeof(bf16);
+    int memcpy_per_row = dst.cols / elem_per_memcpy;
+    int st = row_start * dst.width;
+    int total_calls = rows * dst.width;
+
+    #pragma unroll
+    for(int i = st; i < st+total_calls; i++) {
+
+        int idx = i * 32 + laneid;
+        
+        int row = idx / memcpy_per_row;
+        int col = (idx*elem_per_memcpy) % dst.cols;
+
+        *(float4*)(&dst[{row, col}]) = *(float4*)(&src[row*row_stride + col]);
+    }
+}
+/**
  * @brief Stores bf16 data from a shared memory tile with a row layout into global memory.
  *
  * @tparam ST The type of the shared tile.
