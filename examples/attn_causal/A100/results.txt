@@ -12,6 +12,8 @@ Starting warmup
 Starting kernel
 Finished kernel
 Average difference: 8.10781e-05
-Average execution time: 5059 us
+Max difference: 0.0078125 at index 77
+o_ref: -1.21094 o: -1.20312
+Average execution time: 5029 us
 Correct :)
-Efficiency: 54.3344 TFLOPS
+Efficiency: 54.6586 TFLOPS
