@@ -1,0 +1,13 @@
+(flashattention) (base) REDMOND.v-feiychen@GCRAZGDL1740:~/ThunderKittens/examples/attn/A100_cpasync$ ./attn_fwd ../randn_4096_64.txt 
+Entered main!
+Starting to enter!
+Finished loading Q
+Finished loading K
+Finished loading V
+Finished loading O_REF
+Finished loading file from ../randn_4096_64.txt!
+Starting kernel
+Finished kernel
+Average execution time: 8686 us
+Correct :)
+Efficiency: 63.2922 TFLOPS
